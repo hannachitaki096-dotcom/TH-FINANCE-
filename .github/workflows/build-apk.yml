@@ -1,4 +1,4 @@
-name: Build TH Finance APK
+name: Build and Sign TH Finance APK
 
 on:
   workflow_dispatch:
@@ -19,7 +19,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # تم استبدال الكود القديم بهذا الإجراء الجاهز الذي يقوم بتثبيت وإعداد SDK و cmdline-tools و sdkmanager تلقائياً
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
@@ -37,11 +36,27 @@ jobs:
         run: |
           unzip -o TH_Finance_Android_TH23_v1.zip
           cd TH_Finance_Android
-          gradle --no-daemon :app:assembleDebug
+          gradle --no-daemon :app:assembleRelease
 
-      - name: Upload APK
+      - name: Decode Keystore from Secrets
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > TH_Finance_Android/app/keystore.jks
+
+      - name: Sign APK
+        run: |
+          cd TH_Finance_Android/app
+          # تحديد مسار أداة apksigner تلقائياً من مجلد البناء
+          BUILD_TOOLS_VERSION=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
+          APKSIGNER=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner
+          
+          $APKSIGNER sign --ks keystore.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            build/outputs/apk/release/app-release.apk
+
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: TH-Finance-APK
-          path: TH_Finance_Android/app/build/outputs/apk/debug/app-debug.apk
-          
+          name: TH-Finance-Signed-APK
+          path: TH_Finance_Android/app/build/outputs/apk/release/app-release.apk
