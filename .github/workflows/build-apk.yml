@@ -1,4 +1,3 @@
-
 name: Build TH Finance APK
 
 on:
@@ -20,10 +19,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Prepare Android SDK
+      # تم استبدال الكود القديم بهذا الإجراء الجاهز الذي يقوم بتثبيت وإعداد SDK و cmdline-tools و sdkmanager تلقائياً
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Android SDK Tools & Licenses
         run: |
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -43,3 +44,4 @@ jobs:
         with:
           name: TH-Finance-APK
           path: TH_Finance_Android/app/build/outputs/apk/debug/app-debug.apk
+          
