@@ -19,11 +19,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Prepare Android SDK Tools & Licenses
+      - name: Prepare Android SDK Manually
         run: |
+          # إعداد مجلدات SDK يدوياً لضمان عدم حدوث أي خطأ في الإجراء الخارجي
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O commandlinetools.zip
+          unzip -q commandlinetools.zip
+          mv cmdline-tools latest
+          
+          # ضبط مسارات البيئة
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+
+      - name: Install SDK Packages & Licenses
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+          
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -45,7 +59,7 @@ jobs:
       - name: Sign APK
         run: |
           cd TH_Finance_Android/app
-          # تحديد مسار أداة apksigner تلقائياً من مجلد البناء
+          export ANDROID_HOME=$HOME/android-sdk
           BUILD_TOOLS_VERSION=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
           APKSIGNER=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner
           
@@ -56,7 +70,7 @@ jobs:
             build/outputs/apk/release/app-release.apk
 
       - name: Upload Signed APK
-        uses: actions/upload-artifact@v4
+        uses: upload-artifact@v4
         with:
           name: TH-Finance-Signed-APK
           path: TH_Finance_Android/app/build/outputs/apk/release/app-release.apk
